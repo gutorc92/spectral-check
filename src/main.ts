@@ -1,5 +1,14 @@
-import * as core from '@actions/core'
-import { wait } from './wait.js'
+import { glob } from 'node:fs/promises';
+import * as core from '@actions/core';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import { bundleAndLoadRuleset } from '@stoplight/spectral-ruleset-bundler/with-loader';
+import spectralCore from '@stoplight/spectral-core';
+const { Spectral, Document } = spectralCore;
+import Parsers from '@stoplight/spectral-parsers';
+import * as github from '@actions/github';
+import * as core from '@actions/core';
+const SPEC_FILENAME = 'openapi.json'
 
 /**
  * The main function for the action.
@@ -8,20 +17,81 @@ import { wait } from './wait.js'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    const host_api: string = core.getInput('host_api');
+    const spectral_ruleset: string = core.getInput('spectral_ruleset');
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    core.debug(`Host to use ${host_api} ...`);
+    core.debug(`Spectral ruleset to use ${spectral_ruleset} ...`);
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    if (!host_api) {
+      core.setFailed('Host API is required');
+      return;
+    }
+    const fullRepoName = github.context.repo.owner + '/' + github.context.repo.repo;
+    const { owner, repo } = github.context.repo;
+
+    core.debug(`Running Spectral on repository: ${fullRepoName}`);
+    core.debug(`Owner: ${owner}`);
+    core.debug(`Repository: ${repo}`);
+    const rulesetFiles = [];
+    for await (const entry of glob('.spectral.{json,yaml}', { cwd: process.cwd() })) {
+      core.debug(`Ruleset file found: ${entry}`);
+      rulesetFiles.push(`${process.cwd()}/${entry}`);
+    }
+
+    if (rulesetFiles.length === 0) {
+      core.error("No ruleset found matching .spectral.{json,yaml}");
+      core.setFailed('Spectral ruleset is required')
+      return;
+    }
+
+    const rulesetPath = rulesetFiles[0];
+    const ruleset = await bundleAndLoadRuleset(rulesetPath, {
+      fs: { promises: fs },
+      fetch
+    });
+
+    const response = await fetch(host_api)
+    if (!response.ok) {
+      core.setFailed(
+        `Failed to fetch API spec from ${host_api}: ${response.status} ${response.statusText}`
+      )
+      return
+    }
+    const body = await response.text();
+
+    const localPath = path.join(process.cwd(), SPEC_FILENAME);
+
+    await fs.writeFile(localPath, body, 'utf-8');
+
+    core.setOutput('spec_path', localPath);
+    
+    const spectral = new Spectral();
+    spectral.setRuleset(ruleset);
+    // 2. Read the file content as a UTF-8 string
+    const fileContent = await fs.readFile(localPath, 'utf8');
+
+    // 3. Initialize the Spectral Document
+    // The third argument (source) is crucial for accurate error reporting
+    const myDocument = new Document(
+      fileContent,
+      Parsers.Json, 
+      localPath 
+    );
+    const results = await spectral.run(myDocument);
+    
+    console.table(results.map(r => ({
+      code: r.code,
+      severity: r.severity,
+      message: r.message,
+      line: r.range.start.line + 1
+    })));
 
     // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
   } catch (error) {
     // Fail the workflow run if an error occurs
+    console.log('passou aqui ');
     if (error instanceof Error) core.setFailed(error.message)
   }
 }

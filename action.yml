@@ -9,15 +9,32 @@ branding:
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
-    required: true
-    default: '1000'
+  host_api:
+    required: false
+    description: Host of the api documentation
+  spectral_ruleset:
+    required: false
+    description: |
+      Custom ruleset to load in Spectral.
+
+      When unspecified, will try to load the default ruleset (matching .spectral.{yaml,yml,js,json}) if it exists.
+  repo_token:
+    required: false
+    description: |
+      The GitHub App installation access token.
+
+      [Learn more about `GITHUB_TOKEN`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token#about-the-github_token-secret)
+    default: ${{ github.token }}
+  event_name:
+    required: false
+    description: |
+      The name of the event that triggered the workflow
+    default: ${{ github.event_name }}
 
 # Define your outputs here.
 outputs:
-  time:
-    description: Your output description here
+  spec_path:
+    description: Path to the downloaded API spec file (when host_api is provided)
 
 runs:
   using: node24

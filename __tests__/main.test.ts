@@ -7,11 +7,12 @@
  */
 import { jest } from '@jest/globals'
 import * as core from '../__fixtures__/core.js'
-import { wait } from '../__fixtures__/wait.js'
 
-// Mocks should be declared before the module being tested is imported.
+const writeFileMock = jest.fn<() => Promise<void>>().mockResolvedValue(undefined)
+jest.unstable_mockModule('node:fs/promises', () => ({ writeFile: writeFileMock }))
 jest.unstable_mockModule('@actions/core', () => core)
-jest.unstable_mockModule('../src/wait.js', () => ({ wait }))
+
+let fetchMock: ReturnType<typeof jest.fn>
 
 // The module being tested should be imported dynamically. This ensures that the
 // mocks are used in place of any actual dependencies.
@@ -19,44 +20,74 @@ const { run } = await import('../src/main.js')
 
 describe('main.ts', () => {
   beforeEach(() => {
-    // Set the action's inputs as return values from core.getInput().
-    core.getInput.mockImplementation(() => '500')
+    fetchMock = jest.fn()
+    ;(globalThis as unknown as { fetch: typeof fetchMock }).fetch = fetchMock
 
-    // Mock the wait function so that it does not actually wait.
-    wait.mockImplementation(() => Promise.resolve('done!'))
+    // Set the action's inputs as return values from core.getInput().
+    core.getInput.mockImplementation((name: string) =>
+      name === 'host_api' ? '' : ''
+    )
   })
 
   afterEach(() => {
     jest.resetAllMocks()
   })
 
-  it('Sets the time output', async () => {
+  it('Sets the time output when host_api is empty', async () => {
     await run()
 
-    // Verify the time output was set.
-    expect(core.setOutput).toHaveBeenNthCalledWith(
-      1,
+    expect(core.setOutput).toHaveBeenCalledWith(
       'time',
-      // Simple regex to match a time string in the format HH:MM:SS.
+      expect.stringMatching(/^\d{2}:\d{2}:\d{2}/)
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('When host_api is provided, fetches file and sets spec_path output', async () => {
+    const specUrl = 'https://example.com/openapi.json'
+    const specBody = '{"openapi":"3.0.0"}'
+    core.getInput.mockImplementation((name: string) =>
+      name === 'host_api' ? specUrl : ''
+    )
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(specBody)
+    })
+
+    await run()
+
+    expect(fetchMock).toHaveBeenCalledWith(specUrl)
+    expect(writeFileMock).toHaveBeenCalledWith(
+      expect.stringContaining('openapi.json'),
+      specBody,
+      'utf-8'
+    )
+    expect(core.setOutput).toHaveBeenCalledWith(
+      'spec_path',
+      expect.stringContaining('openapi.json')
+    )
+    expect(core.setOutput).toHaveBeenCalledWith(
+      'time',
       expect.stringMatching(/^\d{2}:\d{2}:\d{2}/)
     )
   })
 
-  it('Sets a failed status', async () => {
-    // Clear the getInput mock and return an invalid value.
-    core.getInput.mockClear().mockReturnValueOnce('this is not a number')
-
-    // Clear the wait mock and return a rejected promise.
-    wait
-      .mockClear()
-      .mockRejectedValueOnce(new Error('milliseconds is not a number'))
+  it('Sets a failed status when fetch returns non-ok response', async () => {
+    const specUrl = 'https://example.com/openapi.json'
+    core.getInput.mockImplementation((name: string) =>
+      name === 'host_api' ? specUrl : ''
+    )
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    })
 
     await run()
 
-    // Verify that the action was marked as failed.
-    expect(core.setFailed).toHaveBeenNthCalledWith(
-      1,
-      'milliseconds is not a number'
+    expect(core.setFailed).toHaveBeenCalledWith(
+      `Failed to fetch API spec from ${specUrl}: 404 Not Found`
     )
+    expect(writeFileMock).not.toHaveBeenCalled()
   })
 })
