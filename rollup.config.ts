@@ -12,11 +12,12 @@ const config = {
     file: 'dist/index.js',
     format: 'cjs',
     sourcemap: true,
-    exports: 'auto'
+    exports: 'auto',
+    inlineDynamicImports: true
   },
   plugins: [
     typescript(),
-    nodeResolve({ preferBuiltins: true }),
+    nodeResolve({ preferBuiltins: true, exportConditions: ['node'] }),
     commonjs(),
     json()
   ],
