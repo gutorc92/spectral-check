@@ -23,6 +23,15 @@ export async function run(): Promise<void> {
     core.debug(`Host to use ${host_api} ...`)
     core.debug(`Spectral ruleset to use ${spectral_ruleset} ...`)
 
+    const workspace = process.env.GITHUB_WORKSPACE
+
+    if (!workspace) {
+      core.setFailed('GITHUB_WORKSPACE is not defined')
+      return
+    }
+
+    core.debug(`Github workspace ${workspace} ...`)
+
     if (!host_api) {
       core.setFailed('Host API is required')
       return
@@ -36,10 +45,10 @@ export async function run(): Promise<void> {
     core.debug(`Repository: ${repo}`)
     const rulesetFiles = []
     for await (const entry of glob('.spectral.{json,yaml}', {
-      cwd: process.cwd()
+      cwd: workspace
     })) {
       core.debug(`Ruleset file found: ${entry}`)
-      rulesetFiles.push(`${process.cwd()}/${entry}`)
+      rulesetFiles.push(path.join(workspace, entry))
     }
 
     if (rulesetFiles.length === 0) {
@@ -63,7 +72,7 @@ export async function run(): Promise<void> {
     }
     const body = await response.text()
 
-    const localPath = path.join(process.cwd(), SPEC_FILENAME)
+    const localPath = path.join(workspace, SPEC_FILENAME)
 
     await fs.writeFile(localPath, body, 'utf-8')
 
