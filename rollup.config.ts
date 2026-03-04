@@ -11,14 +11,16 @@ const config = {
     esModule: true,
     file: 'dist/index.js',
     format: 'cjs',
-    sourcemap: true
+    sourcemap: true,
+    exports: 'auto'
   },
   plugins: [
     typescript(),
     nodeResolve({ preferBuiltins: true }),
     commonjs(),
     json()
-  ]
+  ],
+  external: []
 }
 
 export default config
