@@ -34,7 +34,8 @@ inputs:
 # Define your outputs here.
 outputs:
   spec_path:
-    description: Path to the downloaded API spec file (when host_api is provided)
+    description:
+      Path to the downloaded API spec file (when host_api is provided)
 
 runs:
   using: node24

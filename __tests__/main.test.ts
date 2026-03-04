@@ -8,8 +8,12 @@
 import { jest } from '@jest/globals'
 import * as core from '../__fixtures__/core.js'
 
-const writeFileMock = jest.fn<() => Promise<void>>().mockResolvedValue(undefined)
-jest.unstable_mockModule('node:fs/promises', () => ({ writeFile: writeFileMock }))
+const writeFileMock = jest
+  .fn<() => Promise<void>>()
+  .mockResolvedValue(undefined)
+jest.unstable_mockModule('node:fs/promises', () => ({
+  writeFile: writeFileMock
+}))
 jest.unstable_mockModule('@actions/core', () => core)
 
 let fetchMock: ReturnType<typeof jest.fn>
