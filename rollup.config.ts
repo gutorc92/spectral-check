@@ -1,32 +1,36 @@
-// See: https://rollupjs.org/introduction/
-
 import commonjs from '@rollup/plugin-commonjs'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import typescript from '@rollup/plugin-typescript'
 import json from '@rollup/plugin-json'
 
-const config = {
+export default {
+  // Use index.ts as the ONLY entry point
   input: 'src/index.ts',
   output: {
-    esModule: true,
     file: 'dist/index.js',
-    format: 'es',
+    format: 'cjs',
     exports: 'auto',
+    sourcemap: false,
+    // CRITICAL: This forces Rollup to merge everything into one file
     inlineDynamicImports: true,
-    preserveModules: false,
-    sourcemap: false
+    // Ensure it doesn't try to preserve the src/ folder structure
+    preserveModules: false
   },
   plugins: [
-    typescript({
-      // 3. Prevent TS from emitting separate files
-      declaration: false,
-      outDir: undefined
+    nodeResolve({
+      preferBuiltins: true,
+      // This helps Rollup find your local files correctly
+      extensions: ['.ts', '.js']
     }),
-    nodeResolve({ preferBuiltins: true }),
+    typescript({
+      // Prevent TS from creating separate files that Rollup then follows
+      declaration: false,
+      module: 'ESNext',
+      target: 'ES2022'
+    }),
     commonjs(),
     json()
   ],
+  // Ensure this is strictly empty so it doesn't skip your main.ts
   external: []
 }
-
-export default config

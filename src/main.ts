@@ -2,9 +2,8 @@ import { glob } from 'node:fs/promises'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { bundleAndLoadRuleset } from '@stoplight/spectral-ruleset-bundler/with-loader'
-import spectralCore from '@stoplight/spectral-core'
-const { Spectral, Document } = spectralCore
-import Parsers from '@stoplight/spectral-parsers'
+import { Spectral, Document } from '@stoplight/spectral-core'
+import { Json } from '@stoplight/spectral-parsers'
 import * as github from '@actions/github'
 import * as core from '@actions/core'
 const SPEC_FILENAME = 'openapi.json'
@@ -85,7 +84,7 @@ export async function run(): Promise<void> {
 
     // 3. Initialize the Spectral Document
     // The third argument (source) is crucial for accurate error reporting
-    const myDocument = new Document(fileContent, Parsers.Json, localPath)
+    const myDocument = new Document(fileContent, Json, localPath)
     const results = await spectral.run(myDocument)
 
     console.table(
