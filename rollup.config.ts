@@ -10,14 +10,19 @@ const config = {
   output: {
     esModule: true,
     file: 'dist/index.js',
-    format: 'cjs',
-    sourcemap: true,
+    format: 'es',
     exports: 'auto',
-    inlineDynamicImports: true
+    inlineDynamicImports: true,
+    preserveModules: false,
+    sourcemap: false
   },
   plugins: [
-    typescript(),
-    nodeResolve({ preferBuiltins: true, exportConditions: ['node'] }),
+    typescript({
+      // 3. Prevent TS from emitting separate files
+      declaration: false,
+      outDir: undefined
+    }),
+    nodeResolve({ preferBuiltins: true }),
     commonjs(),
     json()
   ],
