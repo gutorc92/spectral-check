@@ -20,7 +20,7 @@ export default {
     nodeResolve({
       preferBuiltins: true,
       // This helps Rollup find your local files correctly
-      exportConditions: ['node'],
+      exportConditions: ['node', 'default'],
       mainFields: ['module', 'main']
     }),
     typescript({

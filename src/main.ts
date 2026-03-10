@@ -8,7 +8,7 @@ import { Json } from '@stoplight/spectral-parsers'
 import * as github from '@actions/github'
 import * as core from '@actions/core'
 const SPEC_FILENAME = 'openapi.json'
-
+import { bundleRuleset } from '@stoplight/spectral-ruleset-bundler'
 /**
  * The main function for the action.
  *
@@ -60,6 +60,7 @@ export async function run(): Promise<void> {
     }
 
     const rulesetPath = rulesetFiles[0]
+
     const ruleset = await bundleAndLoadRuleset(rulesetPath, {
       fs: { promises: fs },
       fetch
@@ -80,7 +81,9 @@ export async function run(): Promise<void> {
 
     core.setOutput('spec_path', localPath)
 
-    const spectral = new Spectral()
+    const spectral = new Spectral({
+      resolver: undefined
+    })
     spectral.setRuleset(ruleset)
     // 2. Read the file content as a UTF-8 string
     const fileContent = await fs.readFile(localPath, 'utf8')
