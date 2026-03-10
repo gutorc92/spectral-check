@@ -102,6 +102,27 @@ export async function run(): Promise<void> {
       }))
     )
 
+    const csvHeader = 'code,severity,message,line\n'
+
+    const csvRows = results.map((r) => {
+      const code = r.code ?? ''
+      const severity = r.severity ?? ''
+      const message = (r.message ?? '').replace(/"/g, '""') // escape quotes
+      const line = r.range.start.line + 1
+
+      return `"${code}","${severity}","${message}","${line}"`
+    })
+
+    const csvContent = csvHeader + csvRows.join('\n')
+
+    const csvPath = path.join(workspace, 'spectral-results.csv')
+
+    await fs.writeFile(csvPath, csvContent, 'utf8')
+
+    core.setOutput('csv_report', csvPath)
+
+    core.info(`CSV report generated at: ${csvPath}`)
+
     // Set outputs for other workflow steps to use
   } catch (error) {
     // Fail the workflow run if an error occurs
