@@ -2,7 +2,6 @@ import { glob } from 'node:fs/promises'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import * as rulesets from '@stoplight/spectral-rulesets'
-import * as functions from '@stoplight/spectral-functions'
 import { bundleAndLoadRuleset } from '@stoplight/spectral-ruleset-bundler/with-loader'
 import { Spectral, Document } from '@stoplight/spectral-core'
 import { Json } from '@stoplight/spectral-parsers'
@@ -34,8 +33,6 @@ export async function run(): Promise<void> {
     core.debug(`Github workspace ${workspace} ...`)
 
     core.debug(`Spectral rulesets: ${Object.keys(rulesets)}`)
-
-    core.debug(`Spectral functions: ${Object.keys(functions)}`)
 
     if (!host_api) {
       core.setFailed('Host API is required')
