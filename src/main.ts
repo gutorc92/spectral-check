@@ -9,6 +9,7 @@ import * as github from '@actions/github'
 import * as core from '@actions/core'
 const SPEC_FILENAME = 'openapi.json'
 import { bundleRuleset } from '@stoplight/spectral-ruleset-bundler'
+import { Agent } from 'undici'
 /**
  * The main function for the action.
  *
@@ -65,8 +66,17 @@ export async function run(): Promise<void> {
       fs: { promises: fs },
       fetch
     })
+    const tls_verify = core.getInput('tls_verify') === 'true'
 
-    const response = await fetch(host_api)
+    const dispatcher = new Agent({
+      connect: {
+        rejectUnauthorized: tls_verify
+      }
+    })
+
+    const response = await fetch(host_api, {
+      dispatcher
+    } as any)
     if (!response.ok) {
       core.setFailed(
         `Failed to fetch API spec from ${host_api}: ${response.status} ${response.statusText}`
@@ -126,7 +136,7 @@ export async function run(): Promise<void> {
     // Set outputs for other workflow steps to use
   } catch (error) {
     // Fail the workflow run if an error occurs
-    console.log('passou aqui ')
+    console.log('Error: ', error)
     if (error instanceof Error) core.setFailed(error.message)
   }
 }

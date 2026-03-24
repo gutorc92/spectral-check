@@ -10,8 +10,12 @@ branding:
 # Define your inputs here.
 inputs:
   host_api:
-    required: false
+    required: true
     description: Host of the api documentation
+  tls_verify:
+    required: false
+    description: Whether to verify the TLS certificate of the host
+    default: true
   spectral_ruleset:
     required: false
     description: |
