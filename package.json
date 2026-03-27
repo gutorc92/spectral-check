@@ -38,6 +38,7 @@
   "dependencies": {
     "@actions/core": "^3.0.0",
     "@actions/github": "^7.0.0",
+    "@azure/storage-blob": "^12.31.0",
     "@stoplight/spectral-core": "^1.21.0",
     "@stoplight/spectral-functions": "^1.10.1",
     "@stoplight/spectral-parsers": "^1.0.5",

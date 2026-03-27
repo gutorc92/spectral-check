@@ -7,6 +7,7 @@ import { Spectral, Document } from '@stoplight/spectral-core'
 import { Json } from '@stoplight/spectral-parsers'
 import * as github from '@actions/github'
 import * as core from '@actions/core'
+import { BlobServiceClient } from '@azure/storage-blob'
 const SPEC_FILENAME = 'openapi.json'
 import { bundleRuleset } from '@stoplight/spectral-ruleset-bundler'
 import { Agent } from 'undici'
@@ -18,6 +19,8 @@ import { Agent } from 'undici'
 export async function run(): Promise<void> {
   try {
     const host_api: string = core.getInput('host_api')
+    const connection_string: string = core.getInput('connection_string')
+    const container_name: string = core.getInput('container_name')
     const spectral_ruleset: string = core.getInput('spectral_ruleset')
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
@@ -105,27 +108,52 @@ export async function run(): Promise<void> {
 
     console.table(
       results.map((r) => ({
+        repo: repo,
+        org: owner,
+        path: r.path,
         code: r.code,
         severity: r.severity,
-        message: r.message,
-        line: r.range.start.line + 1
+        message: r.message
       }))
     )
 
-    const csvHeader = 'code,severity,message,line\n'
+    const csvHeader = 'org,repo,code,severity,message,path\n'
 
     const csvRows = results.map((r) => {
+      const path = r.path ?? ''
       const code = r.code ?? ''
       const severity = r.severity ?? ''
       const message = (r.message ?? '').replace(/"/g, '""') // escape quotes
-      const line = r.range.start.line + 1
 
-      return `"${code}","${severity}","${message}","${line}"`
+      return `"${owner}","${repo}","${code}","${severity}","${message}","${path}"`
     })
 
     const csvContent = csvHeader + csvRows.join('\n')
 
-    const csvPath = path.join(workspace, 'spectral-results.csv')
+    const fileName = `${owner}-${repo}-${new Date().toISOString()}.csv`
+
+    const csvPath = path.join(workspace, fileName)
+
+    if (connection_string && container_name) {
+      ;('spectral-results.csv')
+      const blobServiceClient =
+        BlobServiceClient.fromConnectionString(connection_string)
+
+      // Get container
+      const containerClient =
+        blobServiceClient.getContainerClient(container_name)
+
+      // Ensure container exists
+      await containerClient.createIfNotExists()
+
+      // Create blob client
+      const blockBlobClient = containerClient.getBlockBlobClient(fileName)
+
+      // Upload file
+      const uploadResponse = await blockBlobClient.uploadFile(csvPath)
+
+      console.log('Upload successful:', uploadResponse.requestId)
+    }
 
     await fs.writeFile(csvPath, csvContent, 'utf8')
 
