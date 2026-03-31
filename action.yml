@@ -17,10 +17,10 @@ inputs:
     description: Whether to verify the TLS certificate of the host
     default: true
   connection_string:
-    required: true
+    required: false
     description: Connection string to the Azure Blob Storage
   container_name:
-    required: true
+    required: false
     description: Name of the container in the Azure Blob Storage
   spectral_ruleset:
     required: false

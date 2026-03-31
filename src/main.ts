@@ -11,10 +11,26 @@ import { BlobServiceClient } from '@azure/storage-blob'
 const SPEC_FILENAME = 'openapi.json'
 import { bundleRuleset } from '@stoplight/spectral-ruleset-bundler'
 import { Agent } from 'undici'
+
+function safeTimestamp(date: Date = new Date()): string {
+  const pad = (n: number) => n.toString().padStart(2, '0')
+
+  const year = date.getFullYear()
+  const month = pad(date.getMonth() + 1)
+  const day = pad(date.getDate())
+
+  const hours = pad(date.getHours())
+  const minutes = pad(date.getMinutes())
+  const seconds = pad(date.getSeconds())
+
+  // ISO-like but filesystem-safe
+  return `${day}-${month}-${year}_${hours}-${minutes}-${seconds}`
+}
 /**
  * The main function for the action.
  *
  * @returns Resolves when the action is complete.
+ *
  */
 export async function run(): Promise<void> {
   try {
@@ -130,12 +146,13 @@ export async function run(): Promise<void> {
 
     const csvContent = csvHeader + csvRows.join('\n')
 
-    const fileName = `${owner}-${repo}-${new Date().toISOString()}.csv`
+    const fileName = `${owner}_${repo}_${safeTimestamp()}.csv`
 
     const csvPath = path.join(workspace, fileName)
 
+    await fs.writeFile(csvPath, csvContent, 'utf8')
+
     if (connection_string && container_name) {
-      ;('spectral-results.csv')
       const blobServiceClient =
         BlobServiceClient.fromConnectionString(connection_string)
 
@@ -154,8 +171,6 @@ export async function run(): Promise<void> {
 
       console.log('Upload successful:', uploadResponse.requestId)
     }
-
-    await fs.writeFile(csvPath, csvContent, 'utf8')
 
     core.setOutput('csv_report', csvPath)
 
